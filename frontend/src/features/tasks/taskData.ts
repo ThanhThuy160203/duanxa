@@ -20,8 +20,6 @@ export type TaskRecord = {
   cancelledReason?: string;
 };
 
-const TODAY = new Date("2026-03-03T00:00:00");
-
 export const TASK_SOURCES = ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch", "Trưởng phòng"];
 
 export const TASK_SEED_DATA: TaskRecord[] = [
@@ -122,7 +120,8 @@ const toDate = (value: string) => {
 
 export const getDeadlineState = (task: TaskRecord): DeadlineState => {
   const dueDate = toDate(task.dueDate);
-  const diff = Math.floor((dueDate.getTime() - TODAY.getTime()) / (1000 * 60 * 60 * 24));
+  const today = new Date();
+  const diff = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diff < 0) {
     return "QUA_HAN";
@@ -137,17 +136,18 @@ export const getDeadlineState = (task: TaskRecord): DeadlineState => {
 
 const isInsidePeriod = (task: TaskRecord, period: TimeFilter) => {
   const dueDate = toDate(task.dueDate);
-  const year = TODAY.getFullYear();
+  const today = new Date();
+  const year = today.getFullYear();
 
   if (period === "THANG") {
-    return dueDate.getFullYear() === year && dueDate.getMonth() === TODAY.getMonth();
+    return dueDate.getFullYear() === year && dueDate.getMonth() === today.getMonth();
   }
 
   if (period === "NAM") {
     return dueDate.getFullYear() === year;
   }
 
-  const currentQuarter = Math.floor(TODAY.getMonth() / 3);
+  const currentQuarter = Math.floor(today.getMonth() / 3);
   const dueQuarter = Math.floor(dueDate.getMonth() / 3);
   return dueDate.getFullYear() === year && dueQuarter === currentQuarter;
 };

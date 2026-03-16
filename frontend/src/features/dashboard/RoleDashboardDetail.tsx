@@ -14,6 +14,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate, useParams } from "react-router-dom";
 import { ROLE_CONFIG_MAP, HIGHLIGHT_TONE_COLORS } from "./roleDashboardConfig";
 import { Role } from "../../types/role";
+import { getHighlightDetail, getHighlightValue } from "./highlightUtils";
+import { useDashboardStats } from "./useDashboardStats";
 
 const RoleDashboardDetail = () => {
   const { roleId } = useParams<{ roleId: string }>();
@@ -21,6 +23,7 @@ const RoleDashboardDetail = () => {
 
   const normalizedRole = roleId?.toUpperCase() as Role | undefined;
   const config = normalizedRole ? ROLE_CONFIG_MAP[normalizedRole] : undefined;
+  const { stats, loading: statsLoading, error: statsError } = useDashboardStats(normalizedRole);
 
   if (!config) {
     return (
@@ -54,26 +57,38 @@ const RoleDashboardDetail = () => {
         <Typography color="text.secondary">{config.description}</Typography>
       </Stack>
 
+      {statsError && <Alert severity="error">{statsError}</Alert>}
+
       <Grid container spacing={2}>
-        {config.highlights.map((highlight) => (
-          <Grid item xs={12} sm={6} md={4} key={highlight.label}>
+        {config.highlights.map((highlight) => {
+          const value = getHighlightValue(highlight, stats);
+          const detailText = getHighlightDetail(highlight, stats);
+
+          return (
+            <Grid item xs={12} sm={6} md={4} key={highlight.label}>
             <Card sx={{ borderRadius: 3 }}>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">
                   {highlight.label}
                 </Typography>
                 <Typography variant="h4" fontWeight={700}>
-                  {highlight.value}
+                  {value}
                 </Typography>
-                {highlight.detail && (
+                {detailText && (
                   <Typography variant="body2" color="text.secondary">
-                    {highlight.detail}
+                    {detailText}
+                  </Typography>
+                )}
+                {highlight.statKey && (
+                  <Typography variant="caption" color="text.secondary">
+                    {statsLoading ? "Đang đồng bộ..." : "Realtime"}
                   </Typography>
                 )}
               </CardContent>
             </Card>
-          </Grid>
-        ))}
+            </Grid>
+          );
+        })}
       </Grid>
 
       <Grid container spacing={3}>

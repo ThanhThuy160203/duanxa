@@ -13,11 +13,14 @@ import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../app/store";
 import { ROLE_CAPABILITY_MAP } from "../authorization/roleCapabilities";
 import { HIGHLIGHT_TONE_COLORS, ROLE_CONFIG_MAP } from "./roleDashboardConfig";
+import { getHighlightDetail, getHighlightValue } from "./highlightUtils";
 import { Role, ROLE_LABEL_MAP } from "../../types/role";
+import { useDashboardStats } from "./useDashboardStats";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
+  const { stats, loading: statsLoading, error: statsError } = useDashboardStats(user?.role);
 
   if (!user) {
     return null;
@@ -59,26 +62,38 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {statsError && <Alert severity="error">{statsError}</Alert>}
+
       <Grid container spacing={2}>
-        {config.highlights.map((highlight) => (
-          <Grid item xs={12} sm={6} md={4} key={highlight.label}>
+        {config.highlights.map((highlight) => {
+          const value = getHighlightValue(highlight, stats);
+          const detailText = getHighlightDetail(highlight, stats);
+
+          return (
+            <Grid item xs={12} sm={6} md={4} key={highlight.label}>
             <Card sx={{ borderRadius: 3, height: "100%" }}>
               <CardContent>
                 <Typography color="text.secondary" variant="body2">
                   {highlight.label}
                 </Typography>
                 <Typography variant="h4" fontWeight={700}>
-                  {highlight.value}
+                  {value}
                 </Typography>
-                {highlight.detail && (
+                {detailText && (
                   <Typography color="text.secondary" variant="body2">
-                    {highlight.detail}
+                    {detailText}
+                  </Typography>
+                )}
+                {highlight.statKey && (
+                  <Typography color="text.secondary" variant="caption">
+                    {statsLoading ? "Đang đồng bộ..." : "Realtime"}
                   </Typography>
                 )}
               </CardContent>
             </Card>
-          </Grid>
-        ))}
+            </Grid>
+          );
+        })}
       </Grid>
 
       <Card sx={{ borderRadius: 3 }}>

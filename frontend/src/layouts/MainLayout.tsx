@@ -59,7 +59,7 @@ const MainLayout = () => {
     items.push({ path: "/profile", label: "Hồ sơ" });
 
     return items;
-  }, [user?.role]);
+  }, [user]);
 
   const handleLogout = () => {
     dispatch(logout());

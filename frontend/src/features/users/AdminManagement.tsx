@@ -42,7 +42,7 @@ const AdminManagement = () => {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
-  const creatableRoles = useMemo(() => (user ? getCreatableRoles(user.role) : []), [user?.role]);
+  const creatableRoles = useMemo(() => (user ? getCreatableRoles(user.role) : []), [user]);
   const canManageAccounts = Boolean(user && (user.role === Role.ADMIN || creatableRoles.length > 0));
   const roleOptions = user?.role === Role.ADMIN ? ALL_ROLES : creatableRoles;
 
@@ -61,6 +61,9 @@ const AdminManagement = () => {
     setFormValues((prev) => ({ ...prev, role: roleOptions[0] ?? prev.role }));
   }, [roleOptions]);
 
+  const pendingUsers = useMemo(() => users.filter((record) => record.status === "PENDING"), [users]);
+  const activeUsers = useMemo(() => users.filter((record) => record.status === "ACTIVE"), [users]);
+
   if (!user) {
     return null;
   }
@@ -77,9 +80,6 @@ const AdminManagement = () => {
       </Box>
     );
   }
-
-  const pendingUsers = useMemo(() => users.filter((record) => record.status === "PENDING"), [users]);
-  const activeUsers = useMemo(() => users.filter((record) => record.status === "ACTIVE"), [users]);
 
   const handleChange = (field: keyof CreateAccountFormValues) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {

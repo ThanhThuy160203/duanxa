@@ -1,4 +1,5 @@
 import { Role } from "../../types/role";
+import type { HighlightStatKey } from "./useDashboardStats";
 
 export type HighlightTone = "default" | "success" | "warning" | "danger";
 
@@ -16,9 +17,12 @@ export type RoleDashboardConfig = {
   summary: string;
   highlights: {
     label: string;
-    value: string;
+    value?: string;
     detail?: string;
     tone?: HighlightTone;
+    statKey?: HighlightStatKey;
+    detailStatKey?: HighlightStatKey;
+    detailFormatter?: (value: number) => string;
   }[];
   responsibilities: string[];
   filters: string[];
@@ -39,9 +43,15 @@ export const ROLE_DASHBOARD_CONFIGS: RoleDashboardConfig[] = [
       "Tiếp nhận nhiệm vụ, phản hồi tiến độ và xác nhận hoàn thành với các cảnh báo quá hạn.",
     summary: "Theo dõi các nhiệm vụ cá nhân và các cảnh báo tức thời khi đăng nhập.",
     highlights: [
-      { label: "Nhiệm vụ đang xử lý", value: "08", detail: "3 quá hạn", tone: "warning" },
-      { label: "Hoàn thành tháng này", value: "12", tone: "success" },
-      { label: "Báo cáo đã xuất", value: "05" },
+      {
+        label: "Nhiệm vụ đang xử lý",
+        tone: "warning",
+        statKey: "tasksProcessing",
+        detailStatKey: "tasksOverdue",
+        detailFormatter: (value) => (value > 0 ? `${value} quá hạn` : "Không quá hạn"),
+      },
+      { label: "Hoàn thành tháng này", tone: "success", statKey: "tasksCompleted" },
+      { label: "Báo cáo đã xuất", statKey: "reportsReady" },
     ],
     responsibilities: [
       "Nhận nhiệm vụ và phản hồi xác nhận hoàn thành",
@@ -75,9 +85,9 @@ export const ROLE_DASHBOARD_CONFIGS: RoleDashboardConfig[] = [
     summary:
       "Quản lý tổng thể nhiệm vụ của phòng với báo cáo chi tiết nhân viên và trạng thái.",
     highlights: [
-      { label: "Nhiệm vụ nhận", value: "15" },
-      { label: "Đã giao cho nhân viên", value: "12", tone: "success" },
-      { label: "Cảnh báo nhân viên", value: "02", tone: "danger", detail: "Hiệu suất thấp" },
+      { label: "Nhiệm vụ nhận", statKey: "visibleTasks" },
+      { label: "Đã giao cho nhân viên", statKey: "staffAssignments", tone: "success" },
+      { label: "Cảnh báo nhân viên", statKey: "tasksNeedAttention", tone: "danger", detail: "Hiệu suất thấp" },
     ],
     responsibilities: [
       "Nhận nhiệm vụ từ cấp trên và giao cho nhân viên",
@@ -112,9 +122,9 @@ export const ROLE_DASHBOARD_CONFIGS: RoleDashboardConfig[] = [
     summary:
       "Theo dõi kết quả tổng hợp các phòng thuộc phạm vi quản lý với cảnh báo xuyên phòng.",
     highlights: [
-      { label: "Phòng quản lý", value: "04" },
-      { label: "Nhiệm vụ ưu tiên", value: "06", tone: "warning" },
-      { label: "Báo cáo liên phòng", value: "08" },
+      { label: "Phòng quản lý", statKey: "departmentCount" },
+      { label: "Nhiệm vụ ưu tiên", statKey: "tasksNeedAttention", tone: "warning" },
+      { label: "Báo cáo liên phòng", statKey: "reportsReady" },
     ],
     responsibilities: [
       "Giao nhiệm vụ xuống trưởng phòng hoặc trực tiếp cho nhân viên",
@@ -147,9 +157,9 @@ export const ROLE_DASHBOARD_CONFIGS: RoleDashboardConfig[] = [
     summary:
       "Dashboard chi tiết nhất với khả năng giao, hủy và theo dõi kết quả toàn địa bàn.",
     highlights: [
-      { label: "Nhiệm vụ toàn xã", value: "48" },
-      { label: "Đang xử lý", value: "27" },
-      { label: "Cần can thiệp", value: "05", tone: "danger" },
+      { label: "Nhiệm vụ toàn xã", statKey: "visibleTasks" },
+      { label: "Đang xử lý", statKey: "tasksProcessing" },
+      { label: "Cần can thiệp", statKey: "tasksNeedAttention", tone: "danger" },
     ],
     responsibilities: [
       "Giao nhiệm vụ đến PCT, trưởng phòng hoặc nhân viên",
@@ -183,9 +193,9 @@ export const ROLE_DASHBOARD_CONFIGS: RoleDashboardConfig[] = [
     summary:
       "Quản lý nguồn giao nhiệm vụ và báo cáo tổng hợp toàn hệ thống.",
     highlights: [
-      { label: "Nguồn giao", value: "05" },
-      { label: "Báo cáo đã gửi", value: "14" },
-      { label: "Nhiệm vụ đang tổng hợp", value: "09" },
+      { label: "Nguồn giao", statKey: "sourceCount" },
+      { label: "Báo cáo đã gửi", statKey: "reportsReady" },
+      { label: "Nhiệm vụ đang tổng hợp", statKey: "tasksAwaitingApproval" },
     ],
     responsibilities: [
       "Thêm, giao và hủy nhiệm vụ",
@@ -223,9 +233,9 @@ export const ROLE_DASHBOARD_CONFIGS: RoleDashboardConfig[] = [
     summary:
       "Điều phối người dùng, phòng ban và phân quyền cho toàn hệ thống.",
     highlights: [
-      { label: "Tài khoản quản lý", value: "120" },
-      { label: "Phòng ban", value: "12" },
-      { label: "Yêu cầu hỗ trợ", value: "04", tone: "warning" },
+      { label: "Tài khoản quản lý", statKey: "activeUsers" },
+      { label: "Phòng ban", statKey: "departmentCount" },
+      { label: "Yêu cầu hỗ trợ", statKey: "pendingUsers", tone: "warning" },
     ],
     responsibilities: [
       "Thêm, xóa, điều chỉnh thông tin tài khoản",

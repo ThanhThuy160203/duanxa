@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -43,11 +43,12 @@ const Reports = () => {
   const [sourceFilter, setSourceFilter] = useState<string>("TOAN_BO");
 
   const sourceOptions = capability?.visibleSources ?? TASK_SOURCES;
-
-  useEffect(() => {
-    if (sourceFilter !== "TOAN_BO" && !sourceOptions.includes(sourceFilter)) {
-      setSourceFilter("TOAN_BO");
+  const normalizedSourceFilter = useMemo(() => {
+    if (sourceFilter === "TOAN_BO") {
+      return "TOAN_BO";
     }
+
+    return sourceOptions.includes(sourceFilter) ? sourceFilter : "TOAN_BO";
   }, [sourceFilter, sourceOptions]);
 
   const reportTasks = useMemo(() => {
@@ -58,12 +59,12 @@ const Reports = () => {
     const visible = getVisibleTasksByRole(tasks, role);
     const byTimeAndDeadline = filterTasks(visible, periodFilter, deadlineFilter);
 
-    if (sourceFilter === "TOAN_BO") {
+    if (normalizedSourceFilter === "TOAN_BO") {
       return byTimeAndDeadline;
     }
 
-    return byTimeAndDeadline.filter((task) => task.source === sourceFilter);
-  }, [deadlineFilter, periodFilter, role, sourceFilter, tasks]);
+    return byTimeAndDeadline.filter((task) => task.source === normalizedSourceFilter);
+  }, [deadlineFilter, normalizedSourceFilter, periodFilter, role, tasks]);
 
   const completed = reportTasks.filter((task) => task.completionRate >= 90).length;
   const progress = reportTasks.length > 0 ? Math.round((completed / reportTasks.length) * 100) : 0;
@@ -129,7 +130,7 @@ const Reports = () => {
                 <Select
                   labelId="report-source-label"
                   label="Nguồn giao"
-                  value={sourceFilter}
+                  value={normalizedSourceFilter}
                   onChange={(event) => setSourceFilter(event.target.value)}
                 >
                   <MenuItem value="TOAN_BO">Toàn bộ</MenuItem>

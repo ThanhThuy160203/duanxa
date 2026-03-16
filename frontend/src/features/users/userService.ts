@@ -251,12 +251,20 @@ export const subscribeUsers = (
   onData: (users: UserProfile[]) => void,
   onError?: (message: string) => void
 ) => {
-  const q = query(usersCollectionRef, orderBy("status"), orderBy("role"));
+  // Keep Firestore query simple to avoid composite-index requirements, then sort locally.
+  const q = query(usersCollectionRef, orderBy("status"));
 
   return onSnapshot(
     q,
     (snapshot) => {
-      const users = snapshot.docs.map((docSnap) => mapUserDoc(docSnap.id, docSnap.data() as UserDoc));
+      const users = snapshot.docs
+        .map((docSnap) => mapUserDoc(docSnap.id, docSnap.data() as UserDoc))
+        .sort((a, b) => {
+          if (a.status === b.status) {
+            return a.role.localeCompare(b.role);
+          }
+          return a.status.localeCompare(b.status);
+        });
       onData(users);
     },
     (error) => onError?.(error.message)
