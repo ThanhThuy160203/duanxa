@@ -2,6 +2,7 @@ import { Provider } from "react-redux";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { store } from "./app/store";
 import AppRouter from "./routes/AppRouter";
+import "./App.css";
 
 const theme = createTheme({
   palette: {

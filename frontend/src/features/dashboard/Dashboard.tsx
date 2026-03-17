@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -12,15 +13,94 @@ import Grid from "@mui/material/GridLegacy";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../app/store";
 import { ROLE_CAPABILITY_MAP } from "../authorization/roleCapabilities";
+import { sendZaloNotification } from "../notifications/zaloService";
 import { HIGHLIGHT_TONE_COLORS, ROLE_CONFIG_MAP } from "./roleDashboardConfig";
 import { getHighlightDetail, getHighlightValue } from "./highlightUtils";
 import { Role, ROLE_LABEL_MAP } from "../../types/role";
 import { useDashboardStats } from "./useDashboardStats";
+import { useTasksRealtime } from "../tasks/useTasksRealtime";
+import { getDeadlineState } from "../tasks/taskData";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
   const { stats, loading: statsLoading, error: statsError } = useDashboardStats(user?.role);
+  const { tasks: realtimeTasks } = useTasksRealtime({ enabled: Boolean(user && user.role === Role.NHAN_VIEN) });
+  const [zaloFeedback, setZaloFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const notifiedTaskIdsRef = useRef<Set<string>>(new Set());
+
+  const overdueEmployeeTasks = useMemo(() => {
+    if (!user || user.role !== Role.NHAN_VIEN) {
+      return [];
+    }
+
+    return realtimeTasks.filter(
+      (task) => task.assignee === user.name && getDeadlineState(task) === "QUA_HAN"
+    );
+  }, [realtimeTasks, user?.name, user?.role]);
+
+  useEffect(() => {
+    if (!user || user.role !== Role.NHAN_VIEN) {
+      return;
+    }
+
+    const tasksToNotify = overdueEmployeeTasks.filter((task) => !notifiedTaskIdsRef.current.has(task.id));
+
+    if (!tasksToNotify.length) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const message =
+      `Bạn có ${tasksToNotify.length} nhiệm vụ quá hạn cần xử lý ngay: ` +
+      tasksToNotify.map((task) => `${task.id} - ${task.title}`).join(", ");
+
+    const deliver = async () => {
+      try {
+        const result = await sendZaloNotification({
+          userId: user.id,
+          userName: user.name,
+          message,
+          tasks: tasksToNotify.map((task) => ({ id: task.id, title: task.title, dueDate: task.dueDate })),
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.delivered) {
+          setZaloFeedback({
+            type: "error",
+            message: "Không thể gửi nhắc Zalo do chưa cấu hình endpoint.",
+          });
+          return;
+        }
+
+        tasksToNotify.forEach((task) => notifiedTaskIdsRef.current.add(task.id));
+        setZaloFeedback({
+          type: "success",
+          message: `Đã gửi nhắc Zalo cho ${tasksToNotify.length} nhiệm vụ quá hạn.`,
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Failed to send Zalo notification", error);
+        setZaloFeedback({
+          type: "error",
+          message: "Không thể gửi nhắc Zalo. Vui lòng thử lại sau.",
+        });
+      }
+    };
+
+    deliver();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [overdueEmployeeTasks, user?.id, user?.name, user?.role]);
 
   if (!user) {
     return null;
@@ -62,7 +142,8 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {statsError && <Alert severity="error">{statsError}</Alert>}
+  {statsError && <Alert severity="error">{statsError}</Alert>}
+  {zaloFeedback && <Alert severity={zaloFeedback.type}>{zaloFeedback.message}</Alert>}
 
       <Grid container spacing={2}>
         {config.highlights.map((highlight) => {

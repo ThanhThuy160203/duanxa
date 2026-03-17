@@ -17,8 +17,21 @@ import Grid from "@mui/material/GridLegacy";
 import { useAppSelector } from "../../app/store";
 import { ROLE_CAPABILITY_MAP, type DeadlineFilter, type TimeFilter } from "../authorization/roleCapabilities";
 import { exportTasksToCsv } from "./reportExport";
-import { TASK_SOURCES, filterTasks, getVisibleTasksByRole } from "../tasks/taskData";
+import { TASK_SOURCES, filterTasks, getDeadlineState, getVisibleTasksByRole } from "../tasks/taskData";
 import { useTasksRealtime } from "../tasks/useTasksRealtime";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Bar,
+} from "recharts";
 
 const EMPLOYEE_RANKING = [
   { name: "Nguyễn Văn A", score: 95, level: "Tốt" },
@@ -31,6 +44,20 @@ const DEPARTMENT_RANKING = [
   { name: "Nội vụ", score: 84 },
   { name: "Tư pháp", score: 75 },
 ];
+
+const STATUS_CHART_COLORS = {
+  done: "#1f9d8b",
+  reviewing: "#0f62fe",
+  processing: "#ffb020",
+  new: "#f06292",
+  cancelled: "#d43f57",
+};
+
+const DEADLINE_CHART_COLORS = {
+  QUA_HAN: "#d43f57",
+  SAP_DEN_HAN: "#ffb020",
+  BINH_THUONG: "#1f9d8b",
+};
 
 const Reports = () => {
   const user = useAppSelector((state) => state.auth.user);
@@ -68,6 +95,73 @@ const Reports = () => {
 
   const completed = reportTasks.filter((task) => task.completionRate >= 90).length;
   const progress = reportTasks.length > 0 ? Math.round((completed / reportTasks.length) * 100) : 0;
+
+  const statusChartData = useMemo(() => {
+    if (!reportTasks.length) {
+      return [];
+    }
+
+    const counters = {
+      done: 0,
+      reviewing: 0,
+      processing: 0,
+      new: 0,
+      cancelled: 0,
+    };
+
+    reportTasks.forEach((task) => {
+      switch (task.status) {
+        case "HOAN_THANH":
+          counters.done += 1;
+          break;
+        case "CHO_DUYET":
+          counters.reviewing += 1;
+          break;
+        case "DANG_XU_LY":
+          counters.processing += 1;
+          break;
+        case "MOI_NHAN":
+          counters.new += 1;
+          break;
+        case "DA_HUY":
+          counters.cancelled += 1;
+          break;
+        default:
+          counters.processing += 1;
+      }
+    });
+
+    return [
+      { name: "Hoàn thành", value: counters.done, color: STATUS_CHART_COLORS.done },
+      { name: "Chờ duyệt", value: counters.reviewing, color: STATUS_CHART_COLORS.reviewing },
+      { name: "Đang xử lý", value: counters.processing, color: STATUS_CHART_COLORS.processing },
+      { name: "Mới nhận", value: counters.new, color: STATUS_CHART_COLORS.new },
+      { name: "Đã hủy", value: counters.cancelled, color: STATUS_CHART_COLORS.cancelled },
+    ].filter((item) => item.value > 0);
+  }, [reportTasks]);
+
+  const deadlineChartData = useMemo(() => {
+    if (!reportTasks.length) {
+      return [];
+    }
+
+    const counters = {
+      QUA_HAN: 0,
+      SAP_DEN_HAN: 0,
+      BINH_THUONG: 0,
+    } as Record<"QUA_HAN" | "SAP_DEN_HAN" | "BINH_THUONG", number>;
+
+    reportTasks.forEach((task) => {
+      const state = getDeadlineState(task);
+      counters[state] += 1;
+    });
+
+    return [
+      { name: "Quá hạn", key: "QUA_HAN", value: counters.QUA_HAN, color: DEADLINE_CHART_COLORS.QUA_HAN },
+      { name: "Sắp đến hạn", key: "SAP_DEN_HAN", value: counters.SAP_DEN_HAN, color: DEADLINE_CHART_COLORS.SAP_DEN_HAN },
+      { name: "Bình thường", key: "BINH_THUONG", value: counters.BINH_THUONG, color: DEADLINE_CHART_COLORS.BINH_THUONG },
+    ].filter((item) => item.value > 0);
+  }, [reportTasks]);
 
   const handleExport = (mode: "chi-tiet" | "theo-phong" | "theo-ca-nhan") => {
     if (!user) {
@@ -183,6 +277,74 @@ const Reports = () => {
               <Typography variant="h4" fontWeight={700}>
                 {progress}%
               </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={6}>
+          <Card sx={{ borderRadius: 3, height: "100%" }}>
+            <CardContent sx={{ height: 360, display: "flex", flexDirection: "column" }}>
+              <Typography variant="h6" gutterBottom>
+                Phân bố trạng thái nhiệm vụ
+              </Typography>
+              <Box sx={{ flex: 1, minHeight: 260 }}>
+                {statusChartData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={statusChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={3}
+                      >
+                        {statusChartData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => `${value} nhiệm vụ`} />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Stack height="100%" alignItems="center" justifyContent="center" spacing={1}>
+                    <Typography color="text.secondary">Chưa có dữ liệu trong bộ lọc hiện tại.</Typography>
+                  </Stack>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} lg={6}>
+          <Card sx={{ borderRadius: 3, height: "100%" }}>
+            <CardContent sx={{ height: 360, display: "flex", flexDirection: "column" }}>
+              <Typography variant="h6" gutterBottom>
+                Tình trạng đến hạn xử lý
+              </Typography>
+              <Box sx={{ flex: 1, minHeight: 260 }}>
+                {deadlineChartData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={deadlineChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(23,34,59,0.15)" />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                      <Tooltip formatter={(value: number) => `${value} nhiệm vụ`} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                        {deadlineChartData.map((entry) => (
+                          <Cell key={entry.key} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Stack height="100%" alignItems="center" justifyContent="center" spacing={1}>
+                    <Typography color="text.secondary">Không có nhiệm vụ nào trong bộ lọc hiện tại.</Typography>
+                  </Stack>
+                )}
+              </Box>
             </CardContent>
           </Card>
         </Grid>

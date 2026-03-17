@@ -8,12 +8,25 @@ type UseTasksRealtimeResult = {
   error: string | null;
 };
 
-export const useTasksRealtime = (): UseTasksRealtimeResult => {
+type UseTasksRealtimeOptions = {
+  enabled?: boolean;
+};
+
+export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTasksRealtimeResult => {
+  const { enabled = true } = options;
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setTasks([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
     const unsubscribe = subscribeTasks(
       (records) => {
         setTasks(records);
@@ -26,7 +39,7 @@ export const useTasksRealtime = (): UseTasksRealtimeResult => {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [enabled]);
 
   return { tasks, loading, error };
 };

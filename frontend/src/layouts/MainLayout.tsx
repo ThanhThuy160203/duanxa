@@ -141,12 +141,6 @@ const MainLayout = () => {
         <Button variant="outlined" color="error" fullWidth onClick={handleLogout}>
           Đăng xuất
         </Button>
-        <Box sx={{ px: 1, pb: 1 }}>
-          <Typography variant="body2" color="text.secondary">
-            Tài khoản đang dùng dashboard riêng theo role:
-          </Typography>
-          <Typography fontWeight={700}>{user?.role ? ROLE_LABEL_MAP[user.role] : "Khách"}</Typography>
-        </Box>
       </Box>
 
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", ml: 2, minWidth: 0 }}>
