@@ -26,6 +26,14 @@ type RegisterFormValues = {
   desiredRole: Role;
 };
 
+const REGISTER_ROLE_OPTIONS: Role[] = [
+  Role.NHAN_VIEN,
+  Role.TRUONG_PHONG,
+  Role.PCT,
+  Role.TONG_HOP,
+  Role.CHU_TICH,
+];
+
 const Register = () => {
   const navigate = useNavigate();
   const [values, setValues] = useState<RegisterFormValues>({
@@ -34,7 +42,7 @@ const Register = () => {
     department: "",
     password: "",
     confirmPassword: "",
-    desiredRole: Role.NHAN_VIEN,
+    desiredRole: REGISTER_ROLE_OPTIONS[0],
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +124,7 @@ const Register = () => {
                     }))
                   }
                 >
-                  {[Role.NHAN_VIEN, Role.TRUONG_PHONG, Role.PCT].map((role) => (
+                  {REGISTER_ROLE_OPTIONS.map((role) => (
                     <MenuItem key={role} value={role}>
                       {ROLE_LABEL_MAP[role]}
                     </MenuItem>

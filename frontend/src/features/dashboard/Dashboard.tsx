@@ -12,7 +12,7 @@ import {
 import Grid from "@mui/material/GridLegacy";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../app/store";
-import { ROLE_CAPABILITY_MAP } from "../authorization/roleCapabilities";
+import { ROLE_CAPABILITY_MAP, type RoleCapabilities } from "../authorization/roleCapabilities";
 import { sendZaloNotification } from "../notifications/zaloService";
 import { HIGHLIGHT_TONE_COLORS, ROLE_CONFIG_MAP } from "./roleDashboardConfig";
 import { getHighlightDetail, getHighlightValue } from "./highlightUtils";
@@ -20,6 +20,90 @@ import { Role, ROLE_LABEL_MAP } from "../../types/role";
 import { useDashboardStats } from "./useDashboardStats";
 import { useTasksRealtime } from "../tasks/useTasksRealtime";
 import { getDeadlineState } from "../tasks/taskData";
+
+type RoleFunctionAction = {
+  key: string;
+  label: string;
+  to: string;
+  color: string;
+  hoverBg: string;
+  canUse: (capabilities: RoleCapabilities) => boolean;
+};
+
+const ROLE_FUNCTION_ACTIONS: RoleFunctionAction[] = [
+  {
+    key: "receive-task",
+    label: "Nhận nhiệm vụ",
+    to: "/tasks",
+    color: "#2563eb",
+    hoverBg: "rgba(37, 99, 235, 0.08)",
+    canUse: (cap) => cap.canReceiveTask,
+  },
+  {
+    key: "assign-task",
+    label: "Giao nhiệm vụ",
+    to: "/tasks",
+    color: "#1d4ed8",
+    hoverBg: "rgba(29, 78, 216, 0.08)",
+    canUse: (cap) => cap.canAssignTask || cap.canCreateTask,
+  },
+  {
+    key: "reassign-task",
+    label: "Giao lại",
+    to: "/tasks",
+    color: "#3b82f6",
+    hoverBg: "rgba(59, 130, 246, 0.08)",
+    canUse: (cap) => cap.canReassignTask,
+  },
+  {
+    key: "feedback",
+    label: "Đánh giá/Phản hồi",
+    to: "/tasks",
+    color: "#10b981",
+    hoverBg: "rgba(16, 185, 129, 0.1)",
+    canUse: (cap) => cap.canEvaluateTask || cap.canProvideFeedback,
+  },
+  {
+    key: "cancel-task",
+    label: "Hủy nhiệm vụ",
+    to: "/tasks",
+    color: "#f43f5e",
+    hoverBg: "rgba(244, 63, 94, 0.1)",
+    canUse: (cap) => cap.canCancelTask,
+  },
+  {
+    key: "export-report",
+    label: "Xuất báo cáo chi tiết",
+    to: "/reports",
+    color: "#ec4899",
+    hoverBg: "rgba(236, 72, 153, 0.1)",
+    canUse: (cap) => cap.canExportReport,
+  },
+  {
+    key: "performance-alert",
+    label: "Cảnh báo hiệu suất",
+    to: "/reports",
+    color: "#d97706",
+    hoverBg: "rgba(217, 119, 6, 0.1)",
+    canUse: (cap) => cap.canWarnPerformance,
+  },
+  {
+    key: "classify-source",
+    label: "Phân loại nguồn giao",
+    to: "/reports",
+    color: "#f59e0b",
+    hoverBg: "rgba(245, 158, 11, 0.12)",
+    canUse: (cap) => cap.canClassifyTaskSource,
+  },
+  {
+    key: "manage-account",
+    label: "Quản trị tài khoản",
+    to: "/admin",
+    color: "#dc2626",
+    hoverBg: "rgba(220, 38, 38, 0.12)",
+    canUse: (cap) => cap.canManageAccounts,
+  },
+];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -108,6 +192,11 @@ const Dashboard = () => {
 
   const config = ROLE_CONFIG_MAP[user.role];
   const capability = ROLE_CAPABILITY_MAP[user.role];
+  const roleActions = ROLE_FUNCTION_ACTIONS.filter((action) => action.canUse(capability));
+
+  const handleRoleAction = (to: string) => {
+    navigate(to);
+  };
 
   if (!config || !capability) {
     return (
@@ -182,16 +271,30 @@ const Dashboard = () => {
           <Typography variant="h6" gutterBottom>
             Chức năng theo vai trò
           </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {capability.canReceiveTask && <Chip label="Nhận nhiệm vụ" color="info" variant="outlined" />}
-            {capability.canAssignTask && <Chip label="Giao nhiệm vụ" color="primary" variant="outlined" />}
-            {capability.canReassignTask && <Chip label="Giao lại" color="primary" variant="outlined" />}
-            {capability.canEvaluateTask && <Chip label="Đánh giá/Phản hồi" color="success" variant="outlined" />}
-            {capability.canCancelTask && <Chip label="Hủy nhiệm vụ" color="error" variant="outlined" />}
-            {capability.canExportReport && <Chip label="Xuất báo cáo chi tiết" color="secondary" variant="outlined" />}
-            {capability.canWarnPerformance && <Chip label="Cảnh báo hiệu suất" color="warning" variant="outlined" />}
-            {capability.canClassifyTaskSource && <Chip label="Phân loại nguồn giao" color="warning" variant="outlined" />}
-            {capability.canManageAccounts && <Chip label="Quản trị tài khoản" color="error" variant="outlined" />}
+          <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
+            {roleActions.map((action) => (
+              <Button
+                key={action.key}
+                variant="outlined"
+                size="small"
+                onClick={() => handleRoleAction(action.to)}
+                sx={{
+                  borderRadius: 999,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderColor: action.color,
+                  color: action.color,
+                  px: 2.5,
+                  boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
+                  "&:hover": {
+                    borderColor: action.color,
+                    backgroundColor: action.hoverBg,
+                  },
+                }}
+              >
+                {action.label}
+              </Button>
+            ))}
           </Stack>
         </CardContent>
       </Card>
