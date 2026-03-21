@@ -145,45 +145,58 @@ const MainLayout = () => {
 
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", ml: 2, minWidth: 0 }}>
         <Paper
-          component="header"
           sx={{
-            p: 2.5,
-            borderRadius: 3,
-            border: "1px solid",
-            borderColor: "divider",
-            background: "linear-gradient(135deg, rgba(15,98,254,0.95) 0%, rgba(92,63,252,0.9) 100%)",
-            color: "common.white",
+            flex: 1,
+            p: { xs: 2, md: 3 },
+            borderRadius: 4,
+            border: "1px solid rgba(15,23,42,0.08)",
+            boxShadow: "0 25px 60px rgba(15,23,42,0.08)",
+            backgroundColor: "rgba(255,255,255,0.9)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2.5,
           }}
         >
-          <Typography variant="h5" fontWeight={700}>
-            Trung tâm điều hành nhiệm vụ
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.4 }}>
-            Theo dõi tiến độ, cảnh báo quá hạn và hiệu suất theo từng cấp quản lý.
-          </Typography>
+          <Paper
+            component="header"
+            elevation={0}
+            sx={{
+              p: 2.5,
+              borderRadius: 3,
+              background: "linear-gradient(135deg, rgba(15,98,254,0.95) 0%, rgba(92,63,252,0.9) 100%)",
+              color: "common.white",
+            }}
+          >
+            <Typography variant="h5" fontWeight={700}>
+              Trung tâm điều hành nhiệm vụ
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.4 }}>
+              Theo dõi tiến độ, cảnh báo quá hạn và hiệu suất theo từng cấp quản lý.
+            </Typography>
+          </Paper>
+
+          {showAlerts && loginAlerts.length > 0 && (
+            <Stack spacing={1}>
+              {loginAlerts.map((message) => (
+                <Alert
+                  key={message}
+                  severity={message.includes("quá hạn") ? "error" : "warning"}
+                  action={
+                    <IconButton size="small" color="inherit" onClick={() => setShowAlerts(false)}>
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  }
+                >
+                  {message}
+                </Alert>
+              ))}
+            </Stack>
+          )}
+
+          <Box component="main" sx={{ flex: 1 }}>
+            <Outlet />
+          </Box>
         </Paper>
-
-        {showAlerts && loginAlerts.length > 0 && (
-          <Stack spacing={1} sx={{ mt: 2, px: 1 }}>
-            {loginAlerts.map((message) => (
-              <Alert
-                key={message}
-                severity={message.includes("quá hạn") ? "error" : "warning"}
-                action={
-                  <IconButton size="small" color="inherit" onClick={() => setShowAlerts(false)}>
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                }
-              >
-                {message}
-              </Alert>
-            ))}
-          </Stack>
-        )}
-
-        <Box component="main" sx={{ flex: 1, pt: 3, px: 1 }}>
-          <Outlet />
-        </Box>
       </Box>
     </Box>
   );

@@ -131,5 +131,7 @@ export const useDashboardStats = (role?: Role) => {
     error,
     tasksError,
     usersError,
+    tasks,
+    users,
   } as const;
 };

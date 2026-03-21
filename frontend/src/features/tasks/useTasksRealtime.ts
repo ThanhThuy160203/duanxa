@@ -15,18 +15,15 @@ type UseTasksRealtimeOptions = {
 export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTasksRealtimeResult => {
   const { enabled = true } = options;
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) {
-      setTasks([]);
-      setLoading(false);
-      setError(null);
       return;
     }
 
-    setLoading(true);
+    const loadingTimer = setTimeout(() => setLoading(true), 0);
     const unsubscribe = subscribeTasks(
       (records) => {
         setTasks(records);
@@ -37,9 +34,15 @@ export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTask
         setLoading(false);
       }
     );
-
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(loadingTimer);
+      unsubscribe();
+    };
   }, [enabled]);
 
-  return { tasks, loading, error };
+  return {
+    tasks: enabled ? tasks : [],
+    loading: enabled ? loading : false,
+    error: enabled ? error : null,
+  };
 };
