@@ -1,21 +1,21 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "../features/auth/Login";
-import Register from "../features/auth/Register";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import AuthSessionManager from "../features/auth/AuthSessionManager";
+import LoginEntry from "../features/auth/LoginEntry";
 import Profile from "../features/auth/Profile";
 import Dashboard from "../features/dashboard/Dashboard";
-import Tasks from "../features/tasks/Tasks";
 import Reports from "../features/reports/Reports";
+import Tasks from "../features/tasks/Tasks";
 import AdminManagement from "../features/users/AdminManagement";
 import MainLayout from "../layouts/MainLayout";
-import ProtectedRoute from "./ProtectedRoute";
 import { Role } from "../types/role";
+import ProtectedRoute from "./ProtectedRoute";
 
 const AppRouter = () => {
   return (
     <BrowserRouter>
+      <AuthSessionManager />
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<LoginEntry />} />
 
         <Route
           element={

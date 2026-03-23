@@ -21,6 +21,9 @@ export type RoleCapabilities = {
   canWarnPerformance: boolean;
   canClassifyTaskSource: boolean;
   canManageAccounts: boolean;
+  canDeleteAccounts: boolean;
+  canResetPasswords: boolean;
+  canMapDepartmentsToLeads: boolean;
   visibleSources: string[];
 };
 
@@ -43,6 +46,9 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canWarnPerformance: false,
     canClassifyTaskSource: false,
     canManageAccounts: false,
+    canDeleteAccounts: false,
+    canResetPasswords: false,
+    canMapDepartmentsToLeads: false,
     visibleSources: ["Trưởng phòng", "Phó Chủ tịch", "Chủ tịch"],
   },
   [Role.TRUONG_PHONG]: {
@@ -63,12 +69,15 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canWarnPerformance: true,
     canClassifyTaskSource: false,
     canManageAccounts: false,
-    visibleSources: ["Phó Chủ tịch", "Chủ tịch", "Tổng hợp"],
+    canDeleteAccounts: false,
+    canResetPasswords: false,
+    canMapDepartmentsToLeads: false,
+    visibleSources: ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch", "Trưởng phòng"],
   },
   [Role.PCT]: {
     canReceiveTask: true,
     canProvideFeedback: true,
-    canCreateTask: false,
+    canCreateTask: true,
     canAssignTask: true,
     canReassignTask: true,
     canCancelTask: false,
@@ -83,7 +92,10 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canWarnPerformance: true,
     canClassifyTaskSource: false,
     canManageAccounts: false,
-    visibleSources: ["Chủ tịch", "Tổng hợp", "UBND Tỉnh"],
+    canDeleteAccounts: false,
+    canResetPasswords: false,
+    canMapDepartmentsToLeads: false,
+    visibleSources: ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch", "Trưởng phòng"],
   },
   [Role.CHU_TICH]: {
     canReceiveTask: true,
@@ -103,7 +115,10 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canWarnPerformance: true,
     canClassifyTaskSource: true,
     canManageAccounts: false,
-    visibleSources: ["Sở/Ban/Ngành", "UBND Tỉnh", "Nội bộ"],
+    canDeleteAccounts: false,
+    canResetPasswords: false,
+    canMapDepartmentsToLeads: false,
+    visibleSources: ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch", "Trưởng phòng"],
   },
   [Role.TONG_HOP]: {
     canReceiveTask: true,
@@ -123,6 +138,9 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canWarnPerformance: true,
     canClassifyTaskSource: true,
     canManageAccounts: false,
+    canDeleteAccounts: false,
+    canResetPasswords: false,
+    canMapDepartmentsToLeads: false,
     visibleSources: ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch"],
   },
   [Role.ADMIN]: {
@@ -143,6 +161,9 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canWarnPerformance: true,
     canClassifyTaskSource: true,
     canManageAccounts: true,
+    canDeleteAccounts: true,
+    canResetPasswords: true,
+    canMapDepartmentsToLeads: true,
     visibleSources: ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch", "Trưởng phòng"],
   },
 };

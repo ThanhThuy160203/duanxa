@@ -21,7 +21,7 @@ import { useAppSelector } from "../../app/store";
 import { Role, ROLE_LABEL_MAP } from "../../types/role";
 import { getCreatableRoles } from "./roleHierarchy";
 import { useUsersRealtime } from "./useUsersRealtime";
-import { approvePendingUser, createUserByHierarchy } from "./userService";
+import { approvePendingUser, createUserByHierarchy, fetchDepartments, type DepartmentOption } from "./userService";
 
 const ALL_ROLES = Object.values(Role) as Role[];
 
@@ -42,6 +42,8 @@ const AdminManagement = () => {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const creatableRoles = useMemo(() => (user ? getCreatableRoles(user.role) : []), [user]);
   const canManageAccounts = Boolean(user && (user.role === Role.ADMIN || creatableRoles.length > 0));
   const roleOptions = user?.role === Role.ADMIN ? ALL_ROLES : creatableRoles;
@@ -60,6 +62,32 @@ const AdminManagement = () => {
   useEffect(() => {
     setFormValues((prev) => ({ ...prev, role: roleOptions[0] ?? prev.role }));
   }, [roleOptions]);
+
+  useEffect(() => {
+    if (formValues.role !== Role.TRUONG_PHONG && formValues.role !== Role.NHAN_VIEN) {
+      setFormValues((prev) => ({
+        ...prev,
+        department: "",
+        managedDepartments: "",
+      }));
+    }
+  }, [formValues.role]);
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        const depts = await fetchDepartments();
+        setDepartments(depts);
+      } catch (err) {
+        console.error("Failed to fetch departments:", err);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+
+    loadDepartments();
+  }, []);
 
   const pendingUsers = useMemo(() => users.filter((record) => record.status === "PENDING"), [users]);
   const activeUsers = useMemo(() => users.filter((record) => record.status === "ACTIVE"), [users]);
@@ -188,17 +216,31 @@ const AdminManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField label="Email" type="email" value={formValues.email} onChange={handleChange("email")} required fullWidth />
               </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField label="Phòng ban" value={formValues.department} onChange={handleChange("department")} fullWidth />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Phòng ban phụ trách (cách nhau bằng dấu phẩy)"
-                  value={formValues.managedDepartments}
-                  onChange={handleChange("managedDepartments")}
-                  fullWidth
-                />
-              </Grid>
+              {(formValues.role === Role.TRUONG_PHONG || formValues.role === Role.NHAN_VIEN) && (
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel id="department-select">Phòng ban</InputLabel>
+                    <Select
+                      labelId="department-select"
+                      label="Phòng ban"
+                      value={formValues.department}
+                      onChange={(event) =>
+                        setFormValues((prev) => ({
+                          ...prev,
+                          department: event.target.value,
+                        }))
+                      }
+                      disabled={loadingDepartments}
+                    >
+                      {departments.map((dept) => (
+                        <MenuItem key={dept.code} value={dept.code}>
+                          {dept.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
                   <InputLabel id="role-select">Vai trò</InputLabel>

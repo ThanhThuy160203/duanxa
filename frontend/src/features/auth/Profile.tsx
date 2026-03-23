@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Card,
   CardContent,
   Chip,
@@ -9,10 +8,9 @@ import {
   Typography,
 } from "@mui/material";
 import Grid from "@mui/material/GridLegacy";
-import { useNavigate } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../app/store";
-import { logout } from "./authSlice";
+import { useAppSelector } from "../../app/store";
 import { ROLE_LABEL_MAP } from "../../types/role";
+
 
 const formatStatus = (status: string) => {
   switch (status) {
@@ -29,17 +27,11 @@ const formatStatus = (status: string) => {
 
 const Profile = () => {
   const user = useAppSelector((state) => state.auth.user);
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
 
   if (!user) {
     return null;
   }
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/login");
-  };
 
   return (
     <Stack spacing={3}>
@@ -50,7 +42,7 @@ const Profile = () => {
               <Typography variant="h5" fontWeight={700} gutterBottom>
                 Hồ sơ cá nhân
               </Typography>
-              <Typography color="text.secondary">Thông tin được đồng bộ từ Firestore</Typography>
+              <Typography color="text.secondary">Thông tin được đồng bộ từ backend API</Typography>
             </Box>
             <Chip label={formatStatus(user.status)} color={user.status === "ACTIVE" ? "success" : "warning"} />
           </Stack>
@@ -110,20 +102,6 @@ const Profile = () => {
         </CardContent>
       </Card>
 
-      <Card sx={{ borderRadius: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Thao tác nhanh
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <Button variant="contained" color="primary" onClick={() => navigate("/dashboard")}>Quay lại dashboard</Button>
-            <Button variant="outlined" color="error" onClick={handleLogout}>
-              Đăng xuất
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
     </Stack>
   );
 };

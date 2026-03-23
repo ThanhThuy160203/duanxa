@@ -1,4 +1,3 @@
-import type { Timestamp } from "firebase/firestore";
 import type { Role } from "./role";
 
 export type UserStatus = "ACTIVE" | "PENDING" | "DISABLED";
@@ -6,6 +5,7 @@ export type UserStatus = "ACTIVE" | "PENDING" | "DISABLED";
 export type UserProfile = {
   id: string;
   email: string;
+  apiToken?: string;
   name: string;
   role: Role;
   status: UserStatus;
@@ -14,6 +14,6 @@ export type UserProfile = {
   parentEmail?: string | null;
   parentName?: string | null;
   requestedRole?: Role | null;
-  createdAt?: Timestamp | null;
-  updatedAt?: Timestamp | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };

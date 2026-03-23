@@ -1,20 +1,6 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
-import { db } from "../../firebase/firebase";
 import { Role } from "../../types/role";
 import type { UserProfile, UserStatus } from "../../types/user";
 import { canCreateRole } from "./roleHierarchy";
-
-const USERS_COLLECTION = "users";
 
 export type HierarchyCreateInput = {
   email: string;
@@ -49,28 +35,37 @@ export type ApproveUserInput = {
 };
 
 type UserDoc = {
+  id: string;
   email: string;
+  apiToken?: string;
   name: string;
   role: Role;
   status: UserStatus;
   department?: string;
   managedDepartments?: string[];
-  passwordHash: string;
   parentEmail?: string | null;
   parentName?: string | null;
   requestedRole?: Role | null;
-  createdAt?: unknown;
-  updatedAt?: unknown;
-  approvedByRole?: Role | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type DepartmentOption = {
+  code: string;
+  name: string;
 };
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-const usersCollectionRef = collection(db, USERS_COLLECTION);
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "http://localhost:4000/api";
+const USERS_API_URL = `${API_BASE_URL}/users`;
+const DEPARTMENTS_API_URL = `${API_BASE_URL}/departments`;
+const POLL_INTERVAL_MS = 5000;
 
-const mapUserDoc = (id: string, data: UserDoc): UserProfile => ({
-  id,
+const mapUserDoc = (data: UserDoc): UserProfile => ({
+  id: data.id,
   email: data.email,
+  apiToken: data.apiToken,
   name: data.name,
   role: data.role,
   status: data.status,
@@ -79,65 +74,50 @@ const mapUserDoc = (id: string, data: UserDoc): UserProfile => ({
   parentEmail: data.parentEmail ?? null,
   parentName: data.parentName ?? null,
   requestedRole: data.requestedRole ?? null,
-  createdAt: (data.createdAt as UserProfile["createdAt"]) ?? null,
-  updatedAt: (data.updatedAt as UserProfile["updatedAt"]) ?? null,
+  createdAt: data.createdAt ?? null,
+  updatedAt: data.updatedAt ?? null,
 });
 
-const encodeHex = (buffer: ArrayBuffer) =>
-  Array.from(new Uint8Array(buffer))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-
-const getCrypto = () => {
-  const cryptoImpl = globalThis.crypto;
-
-  if (!cryptoImpl?.subtle) {
-    throw new Error("Thiết bị không hỗ trợ thuật toán mã hóa bắt buộc.");
+const parseErrorMessage = async (response: Response) => {
+  try {
+    const payload = (await response.json()) as { message?: string };
+    return payload.message || "Yeu cau that bai.";
+  } catch {
+    return "Yeu cau that bai.";
   }
-
-  return cryptoImpl;
 };
 
-export const hashPassword = async (password: string): Promise<string> => {
-  const encoded = new TextEncoder().encode(password);
-  const hashBuffer = await getCrypto().subtle.digest("SHA-256", encoded);
-  return encodeHex(hashBuffer);
+const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const response = await fetch(`${USERS_API_URL}${path}`, {
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    ...init,
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 };
 
 export const fetchUserProfile = async (email: string): Promise<UserProfile | null> => {
   const normalized = normalizeEmail(email);
-  const userRef = doc(db, USERS_COLLECTION, normalized);
-  const snapshot = await getDoc(userRef);
-
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  return mapUserDoc(snapshot.id, snapshot.data() as UserDoc);
+  const users = await request<UserDoc[]>("/");
+  const found = users.find((user) => normalizeEmail(user.email) === normalized);
+  return found ? mapUserDoc(found) : null;
 };
 
 export const loginUser = async (email: string, password: string): Promise<UserProfile> => {
-  const normalized = normalizeEmail(email);
-  const userRef = doc(db, USERS_COLLECTION, normalized);
-  const snapshot = await getDoc(userRef);
+  const payload = await request<UserDoc>("/login", {
+    method: "POST",
+    body: JSON.stringify({ email: normalizeEmail(email), password }),
+  });
 
-  if (!snapshot.exists()) {
-    throw new Error("Email chưa được đăng ký trong hệ thống.");
-  }
-
-  const data = snapshot.data() as UserDoc;
-
-  if (data.status !== "ACTIVE") {
-    throw new Error("Tài khoản đang chờ duyệt hoặc bị khóa.");
-  }
-
-  const passwordHash = await hashPassword(password);
-
-  if (passwordHash !== data.passwordHash) {
-    throw new Error("Mật khẩu không chính xác.");
-  }
-
-  return mapUserDoc(snapshot.id, data);
+  return mapUserDoc(payload);
 };
 
 export const createUserByHierarchy = async (input: HierarchyCreateInput): Promise<UserProfile> => {
@@ -149,72 +129,45 @@ export const createUserByHierarchy = async (input: HierarchyCreateInput): Promis
     throw new Error("Mật khẩu cần tối thiểu 6 ký tự.");
   }
 
-  const normalized = normalizeEmail(input.email);
-  const userRef = doc(db, USERS_COLLECTION, normalized);
-  const snapshot = await getDoc(userRef);
+  const payload = await request<UserDoc>("/", {
+    method: "POST",
+    body: JSON.stringify({
+      email: normalizeEmail(input.email),
+      name: input.name,
+      password: input.password,
+      role: input.role,
+      status: "ACTIVE",
+      department: input.department,
+      managedDepartments: input.managedDepartments,
+      parentEmail: input.actor.email,
+      parentName: input.actor.name,
+      requestedRole: null,
+    }),
+  });
 
-  if (snapshot.exists()) {
-    throw new Error("Email đã tồn tại trong hệ thống.");
-  }
-
-  const passwordHash = await hashPassword(input.password);
-  const payload: UserDoc = {
-    email: normalized,
-    name: input.name.trim(),
-    role: input.role,
-    status: "ACTIVE",
-    department: input.department?.trim(),
-    managedDepartments: input.managedDepartments?.filter((dept): dept is string => Boolean(dept?.trim())),
-    passwordHash,
-    parentEmail: input.actor.email,
-    parentName: input.actor.name,
-    requestedRole: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    approvedByRole: input.actor.role,
-  };
-
-  await setDoc(userRef, payload);
-
-  return mapUserDoc(normalized, payload);
+  return mapUserDoc(payload);
 };
 
 export const registerUser = async (input: RegisterUserInput): Promise<void> => {
-  if (input.password.length < 6) {
-    throw new Error("Mật khẩu cần tối thiểu 6 ký tự.");
+  await request<{ message: string }>("/register", {
+    method: "POST",
+    body: JSON.stringify({
+      email: normalizeEmail(input.email),
+      name: input.name,
+      password: input.password,
+      department: input.department,
+      desiredRole: input.desiredRole,
+    }),
+  });
+};
+
+export const fetchDepartments = async (): Promise<DepartmentOption[]> => {
+  const response = await fetch(DEPARTMENTS_API_URL);
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const normalized = normalizeEmail(input.email);
-  const userRef = doc(db, USERS_COLLECTION, normalized);
-  const snapshot = await getDoc(userRef);
-
-  if (snapshot.exists()) {
-    const existing = snapshot.data() as UserDoc;
-    if (existing.status === "PENDING") {
-      throw new Error("Email này đang chờ phê duyệt.");
-    }
-
-    throw new Error("Email đã được sử dụng.");
-  }
-
-  const passwordHash = await hashPassword(input.password);
-  const payload: UserDoc = {
-    email: normalized,
-    name: input.name.trim(),
-    role: input.desiredRole ?? Role.NHAN_VIEN,
-    status: "PENDING",
-    department: input.department?.trim(),
-    managedDepartments: [],
-    passwordHash,
-    parentEmail: null,
-    parentName: null,
-    requestedRole: input.desiredRole ?? Role.NHAN_VIEN,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    approvedByRole: null,
-  };
-
-  await setDoc(userRef, payload);
+  return (await response.json()) as DepartmentOption[];
 };
 
 export const approvePendingUser = async (input: ApproveUserInput): Promise<void> => {
@@ -222,28 +175,12 @@ export const approvePendingUser = async (input: ApproveUserInput): Promise<void>
     throw new Error("Bạn không có quyền phê duyệt vai trò này.");
   }
 
-  const normalized = normalizeEmail(input.email);
-  const userRef = doc(db, USERS_COLLECTION, normalized);
-  const snapshot = await getDoc(userRef);
-
-  if (!snapshot.exists()) {
-    throw new Error("Tài khoản không tồn tại.");
-  }
-
-  const data = snapshot.data() as UserDoc;
-
-  if (data.status !== "PENDING") {
-    throw new Error("Tài khoản này không ở trạng thái chờ duyệt.");
-  }
-
-  await updateDoc(userRef, {
-    role: input.finalRole,
-    status: "ACTIVE" satisfies UserStatus,
-    requestedRole: null,
-    parentEmail: input.approver.email,
-    parentName: input.approver.name,
-    approvedByRole: input.approver.role,
-    updatedAt: serverTimestamp(),
+  await request<{ message: string }>(`/approve/${encodeURIComponent(normalizeEmail(input.email))}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      finalRole: input.finalRole,
+      approver: input.approver,
+    }),
   });
 };
 
@@ -251,14 +188,23 @@ export const subscribeUsers = (
   onData: (users: UserProfile[]) => void,
   onError?: (message: string) => void
 ) => {
-  // Keep Firestore query simple to avoid composite-index requirements, then sort locally.
-  const q = query(usersCollectionRef, orderBy("status"));
+  let disposed = false;
+  let loading = false;
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const users = snapshot.docs
-        .map((docSnap) => mapUserDoc(docSnap.id, docSnap.data() as UserDoc))
+  const loadUsers = async () => {
+    if (loading) {
+      return;
+    }
+
+    loading = true;
+    try {
+      const rows = await request<UserDoc[]>("/");
+      if (disposed) {
+        return;
+      }
+
+      const users = rows
+        .map(mapUserDoc)
         .sort((a, b) => {
           if (a.status === b.status) {
             return a.role.localeCompare(b.role);
@@ -266,7 +212,22 @@ export const subscribeUsers = (
           return a.status.localeCompare(b.status);
         });
       onData(users);
-    },
-    (error) => onError?.(error.message)
-  );
+    } catch (error) {
+      if (!disposed) {
+        onError?.(error instanceof Error ? error.message : "Khong the tai danh sach tai khoan.");
+      }
+    } finally {
+      loading = false;
+    }
+  };
+
+  void loadUsers();
+  const timer = window.setInterval(() => {
+    void loadUsers();
+  }, POLL_INTERVAL_MS);
+
+  return () => {
+    disposed = true;
+    window.clearInterval(timer);
+  };
 };

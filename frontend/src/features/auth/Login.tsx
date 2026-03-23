@@ -1,16 +1,20 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
 import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
-import { setUser } from "./authSlice";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../app/store";
 import { loginUser } from "../users/userService";
+import { setUser } from "./authSlice";
 
 type LoginFormValues = {
   email: string;
   password: string;
 };
 
-const Login = () => {
+interface LoginProps {
+  sessionMessage?: string | null;
+}
+
+const Login = ({ sessionMessage }: LoginProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [values, setValues] = useState<LoginFormValues>({ email: "", password: "" });
@@ -53,6 +57,12 @@ const Login = () => {
         <CardContent>
           <Stack spacing={3} component="form" onSubmit={handleSubmit}>
             <Box>
+              <Box
+                component="img"
+                src="/logo-daklak.png"
+                alt="Logo Dak Lak"
+                sx={{ width: 84, height: 84, objectFit: "contain", mb: 1.25, display: "block", mx: "auto" }}
+              />
               <Typography variant="h4" fontWeight={700} gutterBottom>
                 Đăng nhập hệ thống
               </Typography>
@@ -62,6 +72,7 @@ const Login = () => {
             </Box>
 
             <Stack spacing={2}>
+              {sessionMessage && <Alert severity="warning">{sessionMessage}</Alert>}
               {error && <Alert severity="error">{error}</Alert>}
               <TextField
                 label="Email"
@@ -85,7 +96,6 @@ const Login = () => {
               <Button type="submit" variant="contained" size="large" disabled={submitting}>
                 {submitting ? "Đang kiểm tra..." : "Đăng nhập"}
               </Button>
-              <Button variant="text" onClick={() => navigate("/register")}>Đăng ký tài khoản mới</Button>
             </Stack>
           </Stack>
         </CardContent>

@@ -20,13 +20,9 @@ export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTask
 
   useEffect(() => {
     if (!enabled) {
-      setTasks([]);
-      setLoading(false);
-      setError(null);
       return;
     }
 
-    setLoading(true);
     const unsubscribe = subscribeTasks(
       (records) => {
         setTasks(records);
@@ -40,6 +36,10 @@ export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTask
 
     return () => unsubscribe();
   }, [enabled]);
+
+  if (!enabled) {
+    return { tasks: [], loading: false, error: null };
+  }
 
   return { tasks, loading, error };
 };

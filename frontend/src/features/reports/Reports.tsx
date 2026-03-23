@@ -1,49 +1,38 @@
-import { useMemo, useState } from "react";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    FormControl,
+    InputLabel,
+    MenuItem,
+    Select,
+    Stack,
+    Typography,
 } from "@mui/material";
 import Grid from "@mui/material/GridLegacy";
+import { useMemo, useState } from "react";
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { useAppSelector } from "../../app/store";
 import { ROLE_CAPABILITY_MAP, type DeadlineFilter, type TimeFilter } from "../authorization/roleCapabilities";
-import { exportTasksToCsv } from "./reportExport";
 import { TASK_SOURCES, filterTasks, getDeadlineState, getVisibleTasksByRole } from "../tasks/taskData";
 import { useTasksRealtime } from "../tasks/useTasksRealtime";
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Bar,
-} from "recharts";
-
-const EMPLOYEE_RANKING = [
-  { name: "Nguyễn Văn A", score: 95, level: "Tốt" },
-  { name: "Trần Thị B", score: 68, level: "Cần cải thiện" },
-  { name: "Lê Văn C", score: 88, level: "Khá" },
-];
-
-const DEPARTMENT_RANKING = [
-  { name: "Văn phòng", score: 90 },
-  { name: "Nội vụ", score: 84 },
-  { name: "Tư pháp", score: 75 },
-];
+import { exportTasksToCsv } from "./reportExport";
 
 const STATUS_CHART_COLORS = {
   done: "#1f9d8b",
@@ -63,11 +52,15 @@ const Reports = () => {
   const user = useAppSelector((state) => state.auth.user);
   const role = user?.role;
   const capability = role ? ROLE_CAPABILITY_MAP[role] : undefined;
-  const { tasks, loading, error } = useTasksRealtime();
+  
+  const [isEnabled, setIsEnabled] = useState(true);
+  const { tasks, loading, error } = useTasksRealtime({ enabled: isEnabled });
 
   const [periodFilter, setPeriodFilter] = useState<TimeFilter>("THANG");
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("TOAN_BO");
   const [sourceFilter, setSourceFilter] = useState<string>("TOAN_BO");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   const sourceOptions = capability?.visibleSources ?? TASK_SOURCES;
   const normalizedSourceFilter = useMemo(() => {
@@ -163,6 +156,55 @@ const Reports = () => {
     ].filter((item) => item.value > 0);
   }, [reportTasks]);
 
+  const employeeRanking = useMemo(() => {
+    if (!reportTasks.length) {
+      return [];
+    }
+
+    const employeeScores: Record<string, { totalScore: number; count: number }> = {};
+
+    reportTasks.forEach((task) => {
+      if (!employeeScores[task.assignee]) {
+        employeeScores[task.assignee] = { totalScore: 0, count: 0 };
+      }
+      employeeScores[task.assignee].totalScore += task.completionRate;
+      employeeScores[task.assignee].count += 1;
+    });
+
+    return Object.entries(employeeScores)
+      .map(([name, { totalScore, count }]) => ({
+        name,
+        score: Math.round(totalScore / count),
+        level: Math.round(totalScore / count) >= 90 ? "Tốt" : Math.round(totalScore / count) < 70 ? "Cần cải thiện" : "Khá",
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }, [reportTasks]);
+
+  const departmentRanking = useMemo(() => {
+    if (!reportTasks.length) {
+      return [];
+    }
+
+    const deptScores: Record<string, { totalScore: number; count: number }> = {};
+
+    reportTasks.forEach((task) => {
+      if (!deptScores[task.department]) {
+        deptScores[task.department] = { totalScore: 0, count: 0 };
+      }
+      deptScores[task.department].totalScore += task.completionRate;
+      deptScores[task.department].count += 1;
+    });
+
+    return Object.entries(deptScores)
+      .map(([name, { totalScore, count }]) => ({
+        name,
+        score: Math.round(totalScore / count),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }, [reportTasks]);
+
   const handleExport = (mode: "chi-tiet" | "theo-phong" | "theo-ca-nhan") => {
     if (!user) {
       return;
@@ -172,6 +214,27 @@ const Reports = () => {
     exportTasksToCsv(reportTasks, mode, `bao-cao-${mode}-${user.role.toLowerCase()}-${period}.csv`);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Disable để tắt subscription
+    setIsEnabled(false);
+    
+    // Chờ 300ms rồi enable lại để trigger API call mới
+    await new Promise(resolve => setTimeout(resolve, 300));
+    setIsEnabled(true);
+    setLastUpdated(new Date());
+    
+    // Chờ dữ liệu tải xong
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsRefreshing(false);
+  };
+
+  const formattedLastUpdate = lastUpdated.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
   return (
     <Stack spacing={3}>
       <Box>
@@ -179,7 +242,7 @@ const Reports = () => {
           Trung tâm báo cáo chi tiết
         </Typography>
         <Typography color="text.secondary">
-          Dữ liệu realtime từ Firebase, xuất báo cáo theo tháng/quý/năm, mức độ quá hạn/sắp đến hạn và nguồn giao nhiệm vụ.
+          Dữ liệu được cập nhật tự động. Đã cập nhật lúc {formattedLastUpdate}
         </Typography>
       </Box>
 
@@ -244,9 +307,20 @@ const Reports = () => {
         <Grid item xs={12} md={4}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
-              <Typography color="text.secondary" variant="body2">
-                Tổng nhiệm vụ trong báo cáo
-              </Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                <Typography color="text.secondary" variant="body2">
+                  Tổng nhiệm vụ trong báo cáo
+                </Typography>
+                <Button
+                  size="small"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  sx={{ minWidth: "auto", p: 0.5 }}
+                >
+                  {isRefreshing ? "..." : "Cập nhật"}
+                </Button>
+              </Stack>
               <Typography variant="h4" fontWeight={700}>
                 {reportTasks.length}
               </Typography>
@@ -377,7 +451,7 @@ const Reports = () => {
                     Xếp hạng nhân viên
                   </Typography>
                   <Stack spacing={1.2}>
-                    {EMPLOYEE_RANKING.map((item) => (
+                    {employeeRanking.map((item) => (
                       <Stack key={item.name} direction="row" justifyContent="space-between" alignItems="center">
                         <Typography>{item.name}</Typography>
                         <Chip
@@ -402,7 +476,7 @@ const Reports = () => {
                     Xếp hạng phòng ban
                   </Typography>
                   <Stack spacing={1.2}>
-                    {DEPARTMENT_RANKING.map((item) => (
+                    {departmentRanking.map((item) => (
                       <Stack key={item.name} direction="row" justifyContent="space-between" alignItems="center">
                         <Typography>{item.name}</Typography>
                         <Chip label={`${item.score} điểm`} size="small" color="primary" variant="outlined" />
@@ -418,12 +492,20 @@ const Reports = () => {
 
       {capability?.canWarnPerformance && (
         <Stack spacing={1}>
-          <Alert severity="error" variant="outlined">
-            Cảnh báo: Nhân viên Trần Thị B đang ở mức hoàn thành thấp dưới 70%.
-          </Alert>
-          <Alert severity="success" variant="outlined">
-            Khen thưởng: Nhân viên Nguyễn Văn A duy trì mức hoàn thành tốt trên 90%.
-          </Alert>
+          {employeeRanking.length > 0 && (
+            <>
+              {employeeRanking.some((e) => e.score < 70) && (
+                <Alert severity="error" variant="outlined">
+                  Cảnh báo: Nhân viên {employeeRanking.find((e) => e.score < 70)?.name} đang ở mức hoàn thành thấp dưới 70%.
+                </Alert>
+              )}
+              {employeeRanking.length > 0 && employeeRanking[0].score >= 90 && (
+                <Alert severity="success" variant="outlined">
+                  Khen thưởng: Nhân viên {employeeRanking[0].name} duy trì mức hoàn thành tốt trên 90%.
+                </Alert>
+              )}
+            </>
+          )}
         </Stack>
       )}
     </Stack>

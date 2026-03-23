@@ -1,26 +1,25 @@
-import {
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  Chip,
-  Divider,
-  IconButton,
-  List,
-  ListItemButton,
-  ListItemText,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Divider,
+    IconButton,
+    List,
+    ListItemButton,
+    ListItemText,
+    Paper,
+    Stack,
+    Typography,
+} from "@mui/material";
 import { useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../app/store";
+import { logout } from "../features/auth/authSlice";
 import { buildTaskAlerts, getVisibleTasksByRole } from "../features/tasks/taskData";
 import { useTasksRealtime } from "../features/tasks/useTasksRealtime";
 import { Role, ROLE_LABEL_MAP } from "../types/role";
-import { logout } from "../features/auth/authSlice";
 
 const PRIMARY_NAV = [
   { path: "/dashboard", label: "Dashboard" },
@@ -86,9 +85,12 @@ const MainLayout = () => {
         }}
       >
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ px: 1 }}>
-          <Avatar sx={{ bgcolor: "primary.main", width: 38, height: 38 }}>
-            {user?.name?.charAt(0) ?? "U"}
-          </Avatar>
+          <Box
+            component="img"
+            src="/logo-daklak.png"
+            alt="Logo Dak Lak"
+            sx={{ width: 42, height: 42, objectFit: "contain", borderRadius: "50%" }}
+          />
           <Box>
             <Typography variant="h6" fontWeight={700} letterSpacing={0.2}>
               UBND Đắk Lắk
@@ -155,12 +157,22 @@ const MainLayout = () => {
             color: "common.white",
           }}
         >
-          <Typography variant="h5" fontWeight={700}>
-            Trung tâm điều hành nhiệm vụ
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.4 }}>
-            Theo dõi tiến độ, cảnh báo quá hạn và hiệu suất theo từng cấp quản lý.
-          </Typography>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box
+              component="img"
+              src="/logo-daklak.png"
+              alt="Logo Dak Lak"
+              sx={{ width: 56, height: 56, objectFit: "contain", borderRadius: "50%" }}
+            />
+            <Box>
+              <Typography variant="h5" fontWeight={700}>
+                Trung tâm điều hành nhiệm vụ
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.4 }}>
+                Theo dõi tiến độ, cảnh báo quá hạn và hiệu suất theo từng cấp quản lý.
+              </Typography>
+            </Box>
+          </Stack>
         </Paper>
 
         {showAlerts && loginAlerts.length > 0 && (
