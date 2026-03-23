@@ -4,6 +4,7 @@ import LoginEntry from "../features/auth/LoginEntry";
 import Profile from "../features/auth/Profile";
 import Dashboard from "../features/dashboard/Dashboard";
 import Reports from "../features/reports/Reports";
+import TaskDetail from "../features/tasks/TaskDetail";
 import Tasks from "../features/tasks/Tasks";
 import AdminManagement from "../features/users/AdminManagement";
 import MainLayout from "../layouts/MainLayout";
@@ -36,6 +37,7 @@ const AppRouter = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/tasks/:taskId" element={<TaskDetail />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/admin" element={<AdminManagement />} />
           <Route path="/profile" element={<Profile />} />

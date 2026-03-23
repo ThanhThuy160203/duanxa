@@ -48,6 +48,32 @@ const approveSchema = z.object({
   }),
 });
 
+const actorSchema = z.object({
+  email: z.string().email(),
+  name: z.string().trim().min(2).max(150),
+  role: roleEnum,
+});
+
+const updateUserSchema = z.object({
+  actor: actorSchema,
+  updates: z
+    .object({
+      name: z.string().trim().min(2).max(150).optional(),
+      role: roleEnum.optional(),
+      status: statusEnum.optional(),
+      department: z.string().trim().max(150).optional(),
+      managedDepartments: z.array(z.string().trim().min(2).max(150)).optional(),
+      password: z.string().min(6).max(128).optional(),
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+      message: "Thiếu thông tin cần cập nhật.",
+    }),
+});
+
+const deleteUserSchema = z.object({
+  actor: actorSchema,
+});
+
 const hashPassword = (password: string) => crypto.createHash("sha256").update(password).digest("hex");
 
 const ROLE_LEVEL: Record<(typeof ROLE_VALUES)[number], number> = {
@@ -319,5 +345,112 @@ usersRouter.patch(
     await user.save();
 
     return res.json({ message: "Đã phê duyệt tài khoản thành công." });
+  })
+);
+
+usersRouter.patch(
+  "/:email",
+  asyncHandler(async (req, res) => {
+    const payload = updateUserSchema.parse(req.body);
+    const rawEmail = req.params.email;
+    if (!rawEmail) {
+      return res.status(400).json({ message: "Thiếu email tài khoản cần cập nhật." });
+    }
+
+    const email = decodeURIComponent(rawEmail).trim().toLowerCase();
+    const actorEmail = payload.actor.email.trim().toLowerCase();
+
+    const actor = await UserModel.findOne({ email: actorEmail }).lean();
+    if (!actor || actor.status !== "ACTIVE" || actor.role !== "ADMIN") {
+      return res.status(403).json({ message: "Chỉ admin mới có quyền chỉnh sửa tài khoản." });
+    }
+
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "Tài khoản không tồn tại." });
+    }
+
+    if (payload.updates.name) {
+      user.fullName = payload.updates.name.trim();
+    }
+
+    if (payload.updates.role) {
+      user.role = payload.updates.role;
+    }
+
+    if (payload.updates.status) {
+      user.status = payload.updates.status;
+    }
+
+    if (payload.updates.department !== undefined) {
+      const normalizedDepartment = payload.updates.department.trim();
+      if (!normalizedDepartment) {
+        user.departmentCode = undefined;
+      } else {
+        const departmentCode = await resolveDepartmentCode(normalizedDepartment);
+        if (!departmentCode) {
+          return res.status(400).json({ message: "Không tìm thấy phòng ban tương ứng." });
+        }
+        user.departmentCode = departmentCode;
+      }
+    }
+
+    if (payload.updates.managedDepartments) {
+      user.managedDepartments = payload.updates.managedDepartments;
+    }
+
+    if (payload.updates.password) {
+      user.passwordHash = hashPassword(payload.updates.password);
+    }
+
+    await user.save();
+
+    return res.json(
+      await toApiUser({
+        userId: user.userId,
+        email: user.email,
+        apiToken: user.apiToken,
+        fullName: user.fullName,
+        role: user.role,
+        status: user.status,
+        departmentCode: user.departmentCode,
+        managedDepartments: user.managedDepartments,
+        parentEmail: user.parentEmail,
+        parentName: user.parentName,
+        requestedRole: user.requestedRole,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })
+    );
+  })
+);
+
+usersRouter.delete(
+  "/:email",
+  asyncHandler(async (req, res) => {
+    const payload = deleteUserSchema.parse(req.body);
+    const rawEmail = req.params.email;
+    if (!rawEmail) {
+      return res.status(400).json({ message: "Thiếu email tài khoản cần xoá." });
+    }
+
+    const email = decodeURIComponent(rawEmail).trim().toLowerCase();
+    const actorEmail = payload.actor.email.trim().toLowerCase();
+
+    const actor = await UserModel.findOne({ email: actorEmail }).lean();
+    if (!actor || actor.status !== "ACTIVE" || actor.role !== "ADMIN") {
+      return res.status(403).json({ message: "Chỉ admin mới có quyền xoá tài khoản." });
+    }
+
+    if (email === actorEmail) {
+      return res.status(400).json({ message: "Không thể tự xoá tài khoản của chính bạn." });
+    }
+
+    const deleted = await UserModel.findOneAndDelete({ email });
+    if (!deleted) {
+      return res.status(404).json({ message: "Tài khoản không tồn tại." });
+    }
+
+    return res.json({ message: "Đã xoá tài khoản thành công." });
   })
 );

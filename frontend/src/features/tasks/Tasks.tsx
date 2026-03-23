@@ -16,17 +16,21 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/GridLegacy";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppSelector } from "../../app/store";
 import { Role, ROLE_LABEL_MAP } from "../../types/role";
 import { ROLE_CAPABILITY_MAP, type DeadlineFilter, type TimeFilter } from "../authorization/roleCapabilities";
 import { getAssignableRoles } from "../users/roleHierarchy";
 import {
     buildTaskAlerts,
+    DEADLINE_STATE_COLOR_MAP,
+    DEADLINE_STATE_SHORT_LABEL_MAP,
     filterTasks,
     getDeadlineState,
     getVisibleTasksByRole,
     TASK_SOURCES,
-    type TaskRecord,
+    TASK_STATUS_CHIP_COLOR_MAP,
+    TASK_STATUS_LABEL_MAP,
 } from "./taskData";
 import {
     assignTask,
@@ -44,15 +48,9 @@ import { useTasksRealtime } from "./useTasksRealtime";
 type UserOption = { id: string; name: string; email: string };
 type DepartmentOption = { code: string; name: string };
 
-const STATUS_LABEL_MAP: Record<TaskRecord["status"], string> = {
-  MOI_NHAN: "Mới nhận",
-  DANG_XU_LY: "Đang xử lý",
-  CHO_DUYET: "Chờ duyệt",
-  HOAN_THANH: "Hoàn thành",
-  DA_HUY: "Đã hủy",
-};
-
 const Tasks = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = useAppSelector((state) => state.auth.user);
   const role = user?.role;
   const capability = role ? ROLE_CAPABILITY_MAP[role] : undefined;
@@ -62,7 +60,7 @@ const Tasks = () => {
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("TOAN_BO");
   const [sourceFilter, setSourceFilter] = useState<string>("TOAN_BO");
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  const [selectedTaskId, setSelectedTaskId] = useState<string>(() => searchParams.get("taskId") ?? "");
   const [assignee, setAssignee] = useState("");
   const [assigneeRole, setAssigneeRole] = useState<Role>(Role.NHAN_VIEN);
   const [department, setDepartment] = useState("");
@@ -88,6 +86,13 @@ const Tasks = () => {
 
     return getAssignableRoles(user.role);
   }, [user]);
+
+  useEffect(() => {
+    const taskIdParam = searchParams.get("taskId") ?? "";
+    if (taskIdParam && taskIdParam !== selectedTaskId) {
+      setSelectedTaskId(taskIdParam);
+    }
+  }, [searchParams, selectedTaskId]);
 
   useEffect(() => {
     if (!assignableRoles.length) {
@@ -339,6 +344,17 @@ const Tasks = () => {
     void withAction(() => replaceTasksWithSeedData(), "Đã cập nhật dữ liệu mẫu mới");
   };
 
+  const handleSelectTask = (taskId: string) => {
+    if (taskId === selectedTaskId) {
+      return;
+    }
+
+    setSelectedTaskId(taskId);
+    const next = new URLSearchParams(searchParams);
+    next.set("taskId", taskId);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <Stack spacing={3}>
       <Stack direction="row" spacing={1.5} alignItems="center">
@@ -521,44 +537,6 @@ const Tasks = () => {
                 </Select>
               </FormControl>
             </Grid>
-
-            <Grid item xs={12} md={8}>
-              <TextField
-                fullWidth
-                label="Phản hồi/đánh giá"
-                value={feedback}
-                onChange={(event) => setFeedback(event.target.value)}
-                placeholder="Nhập nội dung phản hồi hoàn thành"
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="% hoàn thành"
-                type="number"
-                value={completionRate}
-                onChange={(event) => setCompletionRate(Math.max(0, Math.min(100, Number(event.target.value) || 0)))}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={8}>
-              <TextField
-                fullWidth
-                label="Nhận xét đánh giá"
-                value={evaluationComment}
-                onChange={(event) => setEvaluationComment(event.target.value)}
-                placeholder="Nhập nhận xét duyệt hoặc yêu cầu làm lại"
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Điểm đánh giá"
-                type="number"
-                value={evaluationScore}
-                onChange={(event) => setEvaluationScore(Math.max(0, Math.min(100, Number(event.target.value) || 0)))}
-              />
-            </Grid>
           </Grid>
 
           <Stack direction="row" spacing={1.5} mt={2} flexWrap="wrap" useFlexGap>
@@ -635,7 +613,7 @@ const Tasks = () => {
               return (
                 <Box
                   key={task.id}
-                  onClick={() => setSelectedTaskId(task.id)}
+                  onClick={() => handleSelectTask(task.id)}
                   sx={{
                     p: 1.5,
                     borderRadius: 2,
@@ -651,25 +629,30 @@ const Tasks = () => {
                       <Typography variant="body2" color="text.secondary">
                         {task.id} • {task.department} • {task.assignee}
                       </Typography>
-                      {task.feedback && (
-                        <Typography variant="body2" color="text.secondary" mt={0.6}>
-                          Phản hồi: {task.feedback}
-                        </Typography>
-                      )}
-                      {task.evaluationComment && (
-                        <Typography variant="body2" color="text.secondary" mt={0.6}>
-                          Đánh giá: {task.evaluationComment}
-                        </Typography>
-                      )}
+
                     </Box>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
                       <Chip label={task.source} size="small" variant="outlined" />
-                      <Chip label={STATUS_LABEL_MAP[task.status]} size="small" color="info" variant="outlined" />
                       <Chip
-                        label={deadlineState === "QUA_HAN" ? "Quá hạn" : deadlineState === "SAP_DEN_HAN" ? "Sắp đến hạn" : "Đúng hạn"}
+                        label={TASK_STATUS_LABEL_MAP[task.status]}
                         size="small"
-                        color={deadlineState === "QUA_HAN" ? "error" : deadlineState === "SAP_DEN_HAN" ? "warning" : "success"}
+                        color={TASK_STATUS_CHIP_COLOR_MAP[task.status]}
+                        variant="outlined"
                       />
+                      <Chip
+                        label={DEADLINE_STATE_SHORT_LABEL_MAP[deadlineState]}
+                        size="small"
+                        color={DEADLINE_STATE_COLOR_MAP[deadlineState]}
+                      />
+                      <Button
+                        size="small"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/tasks/${task.id}`);
+                        }}
+                      >
+                        Chi tiết
+                      </Button>
                     </Stack>
                   </Stack>
                 </Box>

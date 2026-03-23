@@ -34,6 +34,32 @@ export type ApproveUserInput = {
   };
 };
 
+export type UpdateUserInput = {
+  targetEmail: string;
+  actor: {
+    email: string;
+    name: string;
+    role: Role;
+  };
+  updates: {
+    name?: string;
+    role?: Role;
+    status?: UserStatus;
+    department?: string;
+    managedDepartments?: string[];
+    password?: string;
+  };
+};
+
+export type DeleteUserInput = {
+  targetEmail: string;
+  actor: {
+    email: string;
+    name: string;
+    role: Role;
+  };
+};
+
 type UserDoc = {
   id: string;
   email: string;
@@ -181,6 +207,29 @@ export const approvePendingUser = async (input: ApproveUserInput): Promise<void>
       finalRole: input.finalRole,
       approver: input.approver,
     }),
+  });
+};
+
+export const updateUserProfile = async (input: UpdateUserInput): Promise<UserProfile> => {
+  if (!input.updates || Object.keys(input.updates).length === 0) {
+    throw new Error("Không có thông tin cần cập nhật.");
+  }
+
+  const payload = await request<UserDoc>(`/${encodeURIComponent(normalizeEmail(input.targetEmail))}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      actor: input.actor,
+      updates: input.updates,
+    }),
+  });
+
+  return mapUserDoc(payload);
+};
+
+export const deleteUserProfile = async (input: DeleteUserInput): Promise<void> => {
+  await request<{ message: string }>(`/${encodeURIComponent(normalizeEmail(input.targetEmail))}`, {
+    method: "DELETE",
+    body: JSON.stringify({ actor: input.actor }),
   });
 };
 

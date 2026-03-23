@@ -22,6 +22,34 @@ export type TaskRecord = {
 
 export const TASK_SOURCES = ["Sở/Ban/Ngành", "UBND Tỉnh", "Chủ tịch", "Phó Chủ tịch", "Trưởng phòng"];
 
+export const TASK_STATUS_LABEL_MAP: Record<TaskStatus, string> = {
+  MOI_NHAN: "Mới nhận",
+  DANG_XU_LY: "Đang xử lý",
+  CHO_DUYET: "Chờ duyệt",
+  HOAN_THANH: "Hoàn thành",
+  DA_HUY: "Đã hủy",
+};
+
+export const TASK_STATUS_CHIP_COLOR_MAP: Record<TaskStatus, "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"> = {
+  MOI_NHAN: "primary",
+  DANG_XU_LY: "info",
+  CHO_DUYET: "warning",
+  HOAN_THANH: "success",
+  DA_HUY: "error",
+};
+
+export const DEADLINE_STATE_SHORT_LABEL_MAP: Record<DeadlineState, string> = {
+  QUA_HAN: "Quá hạn",
+  SAP_DEN_HAN: "Sắp đến hạn",
+  BINH_THUONG: "Đúng hạn",
+};
+
+export const DEADLINE_STATE_COLOR_MAP: Record<DeadlineState, "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"> = {
+  QUA_HAN: "error",
+  SAP_DEN_HAN: "warning",
+  BINH_THUONG: "success",
+};
+
 export const TASK_SEED_DATA: TaskRecord[] = [
   {
     id: "VP-001",

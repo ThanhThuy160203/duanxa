@@ -533,7 +533,12 @@ const Dashboard = () => {
                   </TableHead>
                   <TableBody>
                     {recentTasks.map((task) => (
-                      <TableRow key={task.id} hover>
+                      <TableRow
+                        key={task.id}
+                        hover
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                        sx={{ cursor: "pointer" }}
+                      >
                         <TableCell sx={{ fontSize: 12, color: "#8b1f1f", fontWeight: 700 }}>{task.title}</TableCell>
                         <TableCell sx={{ fontSize: 12 }}>{task.department}</TableCell>
                       </TableRow>
@@ -572,7 +577,12 @@ const Dashboard = () => {
                       const remainingLabel = remaining < 0 ? `Quá ${Math.abs(remaining)}` : `${remaining}`;
 
                       return (
-                        <TableRow key={task.id} hover>
+                        <TableRow
+                          key={task.id}
+                          hover
+                          onClick={() => navigate(`/tasks/${task.id}`)}
+                          sx={{ cursor: "pointer" }}
+                        >
                           <TableCell sx={{ fontSize: 12, fontWeight: 600, color: "#0a2d66" }}>
                             {task.title}
                           </TableCell>
