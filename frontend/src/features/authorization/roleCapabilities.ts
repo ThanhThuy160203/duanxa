@@ -16,6 +16,7 @@ export type RoleCapabilities = {
   canViewDepartmentResult: boolean;
   canViewMultiDepartmentResult: boolean;
   canViewGlobalResult: boolean;
+  canViewAllTasks: boolean;
   canViewEmployeeRanking: boolean;
   canViewDepartmentRanking: boolean;
   canWarnPerformance: boolean;
@@ -41,6 +42,7 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canViewDepartmentResult: false,
     canViewMultiDepartmentResult: false,
     canViewGlobalResult: false,
+    canViewAllTasks: false,
     canViewEmployeeRanking: false,
     canViewDepartmentRanking: false,
     canWarnPerformance: false,
@@ -64,6 +66,7 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canViewDepartmentResult: true,
     canViewMultiDepartmentResult: false,
     canViewGlobalResult: false,
+    canViewAllTasks: false,
     canViewEmployeeRanking: true,
     canViewDepartmentRanking: true,
     canWarnPerformance: true,
@@ -87,6 +90,7 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canViewDepartmentResult: true,
     canViewMultiDepartmentResult: true,
     canViewGlobalResult: false,
+    canViewAllTasks: true,
     canViewEmployeeRanking: true,
     canViewDepartmentRanking: true,
     canWarnPerformance: true,
@@ -110,6 +114,7 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canViewDepartmentResult: true,
     canViewMultiDepartmentResult: true,
     canViewGlobalResult: true,
+    canViewAllTasks: true,
     canViewEmployeeRanking: true,
     canViewDepartmentRanking: true,
     canWarnPerformance: true,
@@ -133,6 +138,7 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canViewDepartmentResult: true,
     canViewMultiDepartmentResult: true,
     canViewGlobalResult: true,
+    canViewAllTasks: true,
     canViewEmployeeRanking: true,
     canViewDepartmentRanking: true,
     canWarnPerformance: true,
@@ -156,6 +162,7 @@ export const ROLE_CAPABILITY_MAP: Record<Role, RoleCapabilities> = {
     canViewDepartmentResult: true,
     canViewMultiDepartmentResult: true,
     canViewGlobalResult: true,
+    canViewAllTasks: true,
     canViewEmployeeRanking: true,
     canViewDepartmentRanking: true,
     canWarnPerformance: true,

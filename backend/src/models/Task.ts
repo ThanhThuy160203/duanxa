@@ -17,6 +17,19 @@ const taskSchema = new Schema(
       minlength: 3,
       maxlength: 400,
     },
+    documentCode: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+    },
+    documentDate: {
+      type: Date,
+    },
+    priorityLabel: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+    },
     assigneeUserId: {
       type: String,
       required: true,

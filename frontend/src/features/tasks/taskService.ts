@@ -5,6 +5,9 @@ import { TASK_SEED_DATA } from "./taskData";
 type BackendTask = {
   id: string;
   title: string;
+  documentCode?: string | null;
+  documentDate?: string | null;
+  priorityLabel?: string | null;
   assigneeUserId: string;
   assigneeName: string | null;
   assigneeRole?: Role | null;
@@ -119,6 +122,9 @@ const resolveSourceCode = (label: string): BackendTask["source"] => SOURCE_LABEL
 const toTaskRecord = (task: BackendTask): TaskRecord => ({
   id: task.id,
   title: task.title,
+  documentCode: task.documentCode ?? undefined,
+  documentDate: task.documentDate ? task.documentDate.slice(0, 10) : undefined,
+  priorityLabel: task.priorityLabel ?? undefined,
   assignee: task.assigneeName ?? task.assigneeUserId,
   assigneeRole: task.assigneeRole ?? Role.NHAN_VIEN,
   department: task.departmentName ?? task.departmentCode,

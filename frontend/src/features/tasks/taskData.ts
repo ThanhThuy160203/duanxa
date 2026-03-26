@@ -7,6 +7,9 @@ export type DeadlineState = "QUA_HAN" | "SAP_DEN_HAN" | "BINH_THUONG";
 export type TaskRecord = {
   id: string;
   title: string;
+  documentCode?: string;
+  documentDate?: string;
+  priorityLabel?: string;
   assignee: string;
   assigneeRole: Role;
   department: string;

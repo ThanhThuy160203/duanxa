@@ -1,18 +1,20 @@
 import {
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Divider,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
-    TextField,
-    Typography,
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
 } from "@mui/material";
 import Grid from "@mui/material/GridLegacy";
 import { useEffect, useMemo, useState } from "react";
@@ -22,15 +24,16 @@ import { Role, ROLE_LABEL_MAP } from "../../types/role";
 import { ROLE_CAPABILITY_MAP, type DeadlineFilter, type TimeFilter } from "../authorization/roleCapabilities";
 import { getAssignableRoles } from "../users/roleHierarchy";
 import {
-    buildTaskAlerts,
-    DEADLINE_STATE_COLOR_MAP,
-    DEADLINE_STATE_SHORT_LABEL_MAP,
-    filterTasks,
-    getDeadlineState,
-    getVisibleTasksByRole,
-    TASK_SOURCES,
-    TASK_STATUS_CHIP_COLOR_MAP,
-    TASK_STATUS_LABEL_MAP,
+  buildTaskAlerts,
+  DEADLINE_STATE_COLOR_MAP,
+  DEADLINE_STATE_SHORT_LABEL_MAP,
+  filterTasks,
+  getDeadlineState,
+  getVisibleTasksByRole,
+  TASK_SOURCES,
+  TASK_STATUS_CHIP_COLOR_MAP,
+  TASK_STATUS_LABEL_MAP,
+  type TaskRecord,
 } from "./taskData";
 import {
     assignTask,
@@ -47,6 +50,49 @@ import { useTasksRealtime } from "./useTasksRealtime";
 
 type UserOption = { id: string; name: string; email: string };
 type DepartmentOption = { code: string; name: string };
+type DashboardFilter = "total" | "overdue" | "due-today" | "due-soon" | "in-progress";
+
+const DASHBOARD_FILTER_VALUES: DashboardFilter[] = ["total", "overdue", "due-today", "due-soon", "in-progress"];
+const DASHBOARD_FILTER_SET = new Set<DashboardFilter>(DASHBOARD_FILTER_VALUES);
+const DASHBOARD_FILTER_LABEL_MAP: Record<DashboardFilter, string> = {
+  total: "Tổng nhiệm vụ",
+  overdue: "Quá hạn chưa xong",
+  "due-today": "Đến hạn hôm nay",
+  "due-soon": "Đến hạn ≤ 3 ngày",
+  "in-progress": "Đang thực hiện",
+};
+
+const daysUntilDue = (task: TaskRecord) => {
+  const due = new Date(task.dueDate);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+};
+
+const matchesDashboardFilter = (task: TaskRecord, filter: DashboardFilter) => {
+  const diff = daysUntilDue(task);
+  switch (filter) {
+    case "overdue":
+      return getDeadlineState(task) === "QUA_HAN" && task.status !== "HOAN_THANH";
+    case "due-today":
+      return diff === 0 && task.status !== "HOAN_THANH";
+    case "due-soon":
+      return diff > 0 && diff <= 3 && task.status !== "HOAN_THANH";
+    case "in-progress":
+      return !["HOAN_THANH", "DA_HUY"].includes(task.status);
+    case "total":
+    default:
+      return true;
+  }
+};
+
+const isDashboardFilterValue = (value: string | null): value is DashboardFilter => {
+  if (!value) {
+    return false;
+  }
+  return DASHBOARD_FILTER_SET.has(value as DashboardFilter);
+};
 
 const Tasks = () => {
   const navigate = useNavigate();
@@ -59,6 +105,12 @@ const Tasks = () => {
   const [periodFilter, setPeriodFilter] = useState<TimeFilter>("THANG");
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("TOAN_BO");
   const [sourceFilter, setSourceFilter] = useState<string>("TOAN_BO");
+  const [dashboardFilter, setDashboardFilter] = useState<DashboardFilter>(() => {
+    const param = searchParams.get("dashboardFilter");
+    return isDashboardFilterValue(param) ? (param as DashboardFilter) : "total";
+  });
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const [showAllInitialized, setShowAllInitialized] = useState(false);
 
   const [selectedTaskId, setSelectedTaskId] = useState<string>(() => searchParams.get("taskId") ?? "");
   const [assignee, setAssignee] = useState("");
@@ -95,6 +147,20 @@ const Tasks = () => {
   }, [searchParams, selectedTaskId]);
 
   useEffect(() => {
+    const filterParam = searchParams.get("dashboardFilter");
+    if (isDashboardFilterValue(filterParam)) {
+      if (filterParam !== dashboardFilter) {
+        setDashboardFilter(filterParam);
+      }
+      return;
+    }
+
+    if (dashboardFilter !== "total") {
+      setDashboardFilter("total");
+    }
+  }, [dashboardFilter, searchParams]);
+
+  useEffect(() => {
     if (!assignableRoles.length) {
       return;
     }
@@ -109,6 +175,23 @@ const Tasks = () => {
       setSourceFilter("TOAN_BO");
     }
   }, [sourceFilter, sourceOptions]);
+
+  useEffect(() => {
+    if (capability?.canViewAllTasks) {
+      if (!showAllInitialized) {
+        setShowAllTasks(true);
+        setShowAllInitialized(true);
+      }
+      return;
+    }
+
+    if (showAllTasks) {
+      setShowAllTasks(false);
+    }
+    if (showAllInitialized) {
+      setShowAllInitialized(false);
+    }
+  }, [capability?.canViewAllTasks, showAllInitialized, showAllTasks]);
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -151,19 +234,21 @@ const Tasks = () => {
 
   const visibleTasks = useMemo(() => {
     if (!role) {
-      return [];
+      return tasks;
+    }
+
+    if (capability?.canViewAllTasks && showAllTasks) {
+      return tasks;
     }
 
     return getVisibleTasksByRole(tasks, role);
-  }, [role, tasks]);
+  }, [capability?.canViewAllTasks, role, showAllTasks, tasks]);
 
   const filteredTasks = useMemo(() => {
     const baseTasks = filterTasks(visibleTasks, periodFilter, deadlineFilter);
-    if (sourceFilter === "TOAN_BO") {
-      return baseTasks;
-    }
-    return baseTasks.filter((task) => task.source === sourceFilter);
-  }, [deadlineFilter, periodFilter, sourceFilter, visibleTasks]);
+    const sourceApplied = sourceFilter === "TOAN_BO" ? baseTasks : baseTasks.filter((task) => task.source === sourceFilter);
+    return sourceApplied.filter((task) => matchesDashboardFilter(task, dashboardFilter));
+  }, [dashboardFilter, deadlineFilter, periodFilter, sourceFilter, visibleTasks]);
 
   const alerts = useMemo(() => buildTaskAlerts(filteredTasks), [filteredTasks]);
 
@@ -182,6 +267,13 @@ const Tasks = () => {
       { label: "Hoàn thành", value: completed, color: "success" as const },
     ];
   }, [alerts.overdue, alerts.upcoming, filteredTasks]);
+
+  const clearDashboardFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("dashboardFilter");
+    setSearchParams(next, { replace: true });
+    setDashboardFilter("total");
+  };
 
   useEffect(() => {
     if (!selectedTaskId) {
@@ -429,9 +521,30 @@ const Tasks = () => {
                 </Select>
               </FormControl>
             </Grid>
+            {capability?.canViewAllTasks && (
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={<Switch checked={showAllTasks} onChange={(event) => setShowAllTasks(event.target.checked)} />}
+                  label="Hiển thị tất cả nhiệm vụ trong toàn hệ thống"
+                />
+              </Grid>
+            )}
           </Grid>
         </CardContent>
       </Card>
+
+      {dashboardFilter !== "total" && (
+        <Alert
+          severity="info"
+          action={
+            <Button color="inherit" size="small" onClick={clearDashboardFilter}>
+              Bỏ lọc
+            </Button>
+          }
+        >
+          Đang hiển thị nhóm "{DASHBOARD_FILTER_LABEL_MAP[dashboardFilter]}" từ dashboard.
+        </Alert>
+      )}
 
       <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
         {summary.map((item) => (
@@ -627,9 +740,11 @@ const Tasks = () => {
                     <Box>
                       <Typography fontWeight={700}>{task.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {task.id} • {task.department} • {task.assignee}
+                        {task.id} • {task.department}
                       </Typography>
-
+                      <Typography variant="body2" color="text.secondary">
+                        Người thực hiện: {task.assignee} ({ROLE_LABEL_MAP[task.assigneeRole] ?? task.assigneeRole})
+                      </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
                       <Chip label={task.source} size="small" variant="outlined" />

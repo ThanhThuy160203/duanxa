@@ -115,9 +115,9 @@ const buildStats = (tasks: TaskRecord[], users: UserProfile[], role?: Role): Das
   return stats;
 };
 
-export const useDashboardStats = (role?: Role) => {
-  const { tasks, loading: tasksLoading, error: tasksError } = useTasksRealtime();
-  const { users, loading: usersLoading, error: usersError } = useUsersRealtime();
+export const useDashboardStats = (role?: Role, refreshToken = 0) => {
+  const { tasks, loading: tasksLoading, error: tasksError } = useTasksRealtime({ refreshToken });
+  const { users, loading: usersLoading, error: usersError } = useUsersRealtime(refreshToken);
 
   const stats = useMemo(() => buildStats(tasks, users, role), [role, tasks, users]);
   const loading = tasksLoading || usersLoading;

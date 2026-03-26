@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { TaskRecord } from "./taskData";
 import { subscribeTasks } from "./taskService";
 
@@ -10,20 +10,23 @@ type UseTasksRealtimeResult = {
 
 type UseTasksRealtimeOptions = {
   enabled?: boolean;
+  refreshToken?: number;
 };
 
 export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTasksRealtimeResult => {
-  const { enabled = true } = options;
+  const { enabled = true, refreshToken = 0 } = options;
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const markLoading = useCallback(() => setLoading(true), []);
 
   useEffect(() => {
     if (!enabled) {
       return;
     }
 
-    const loadingTimer = setTimeout(() => setLoading(true), 0);
+    setError(null);
+    markLoading();
     const unsubscribe = subscribeTasks(
       (records) => {
         setTasks(records);
@@ -34,11 +37,9 @@ export const useTasksRealtime = (options: UseTasksRealtimeOptions = {}): UseTask
         setLoading(false);
       }
     );
-    return () => {
-      clearTimeout(loadingTimer);
-      unsubscribe();
-    };
-  }, [enabled]);
+
+    return () => unsubscribe();
+  }, [enabled, markLoading, refreshToken]);
 
   return {
     tasks: enabled ? tasks : [],
